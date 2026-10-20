@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>H5 连续扫码实验</title>
+    <script type="module" crossorigin src="./assets/index-DNaGliz9.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CNHRmCsD.css">
+  </head>
+  <body>
+    <main>
+      <h1>H5 连续扫码实验</h1>
+      <p>先打开相机并确认画面，再开启识码。镜头持续打开，结果只保留在当前页面。此实验验证连续单码，不支持同屏多码。</p>
+      <section>
+        <label
+          >码制
+          <select id="format">
+            <option value="qr">二维码</option>
+            <option value="multi">条形码及二维码</option>
+          </select></label
+        >
+        <label><input id="deduplicate" type="checkbox" checked />相同内容只记录一次</label>
+        <div class="actions">
+          <button id="open">1. 打开相机预览</button>
+          <button id="decode" disabled>2. 开启连续识码</button>
+          <button id="stop" disabled>停止并释放相机</button>
+        </div>
+        <p id="status" role="status">等待开始</p>
+        <video id="preview" autoplay muted playsinline></video>
+        <canvas id="frame" hidden></canvas>
+        <p id="metrics">等待视频帧</p>
+        <p>请移动镜头，确认画面和像素摘要发生变化。读到像素不代表已经识码。</p>
+      </section>
+      <section>
+        <h2>采集结果 <span id="count">0 / 100</span></h2>
+        <button id="clear">清空结果</button>
+        <button id="send">回传结果到小程序</button>
+        <p id="bridge-status">普通浏览器无需回传；小程序中需点击此按钮测试通信。</p>
+        <ol id="records"></ol>
+      </section>
+      <section>
+        <h2>环境与日志</h2>
+        <button id="copy">复制测试日志</button>
+        <textarea id="report" readonly rows="14" aria-label="测试日志"></textarea>
+      </section>
+    </main>
+  </body>
+</html>

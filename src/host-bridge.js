@@ -170,9 +170,6 @@ export function createHostBridge(handlers = {}) {
     end() {
       return emit({ type: 'end' });
     },
-    vibrate() {
-      return emit({ type: 'vibrate' });
-    },
     dispose() {
       receiver.dispose();
     },

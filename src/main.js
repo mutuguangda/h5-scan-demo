@@ -73,15 +73,6 @@ function handleCode(result) {
   }
 
   ui.setCurrentCode(result.code);
-  try {
-    if (navigator.vibrate) {
-      navigator.vibrate(80);
-    }
-    else {
-      state.bridge.vibrate();
-    }
-  }
-  catch {}
 
   if (state.bridge.hosted) {
     state.bridge.sendCode(result.code);

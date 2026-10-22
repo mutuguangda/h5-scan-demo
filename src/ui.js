@@ -7,7 +7,6 @@ export function createUi(documentRef = document) {
     currentCode: $('current-code'),
     count: $('count'),
     status: $('status'),
-    results: $('results'),
     torch: $('torch'),
     debugToggle: $('debug-toggle'),
     end: $('end'),
@@ -26,8 +25,6 @@ export function createUi(documentRef = document) {
     dbgConfig: $('dbg-config'),
   };
 
-  const rows = [];
-
   function setStatus(text, tone = 'info') {
     if (!elements.status) {
       return;
@@ -40,7 +37,7 @@ export function createUi(documentRef = document) {
     if (!elements.currentCode) {
       return;
     }
-    elements.currentCode.textContent = code || '—';
+    elements.currentCode.textContent = code || '';
   }
 
   function setCount(count) {
@@ -50,44 +47,18 @@ export function createUi(documentRef = document) {
     elements.count.textContent = String(Number.isFinite(count) ? count : 0);
   }
 
-  function addResult(code) {
-    if (!elements.results) {
-      return;
-    }
-    elements.results.hidden = false;
-    const item = documentRef.createElement('li');
-    item.className = 'results__item';
-    const index = documentRef.createElement('span');
-    index.className = 'results__index';
-    const text = documentRef.createElement('span');
-    text.className = 'results__code';
-    item.append(index, text);
-    elements.results.prepend(item);
-    rows.unshift({ item, index, text });
-    while (rows.length > 30) {
-      const dropped = rows.pop();
-      dropped.item.remove();
-    }
-    text.textContent = code;
-    rows.forEach((row, position) => {
-      row.index.textContent = `${rows.length - position}`;
-    });
-  }
-
-  function clearResults() {
-    rows.length = 0;
-    if (elements.results) {
-      elements.results.replaceChildren();
-      elements.results.hidden = true;
-    }
-  }
-
   function setTorchState({ visible, on }) {
     if (!elements.torch) {
       return;
     }
-    elements.torch.hidden = !visible;
-    elements.torch.disabled = !visible;
+    if (visible) {
+      elements.torch.hidden = false;
+      elements.torch.disabled = false;
+    }
+    else {
+      elements.torch.hidden = true;
+      elements.torch.disabled = true;
+    }
     elements.torch.setAttribute('aria-pressed', on ? 'true' : 'false');
     elements.torch.classList.toggle('is-on', Boolean(on));
   }
@@ -141,8 +112,6 @@ export function createUi(documentRef = document) {
     setStatus,
     setCurrentCode,
     setCount,
-    addResult,
-    clearResults,
     setTorchState,
     setDebugOpen,
     setDebug,

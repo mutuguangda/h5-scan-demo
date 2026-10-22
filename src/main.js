@@ -6,6 +6,8 @@ import { createUi } from './ui.js';
 
 const ui = createUi(document);
 
+const SCAN_HINT = '请将二维码置于取景框内扫描';
+
 const state = {
   config: null,
   scanner: null,
@@ -13,6 +15,7 @@ const state = {
   dedupe: createDedupeState(),
   count: 0,
   ended: false,
+  hintTimer: null,
 };
 
 function describeConfig(config) {
@@ -32,8 +35,8 @@ function onHostResult(message) {
     state.count = message.count;
     ui.setCount(state.count);
   }
-  if (message.currentCode) {
-    ui.setCurrentCode(message.currentCode);
+  if (message.ok) {
+    ui.setCurrentCode(message.currentCode || '');
   }
   if (message.message) {
     updateStatus(message.message, message.ok ? 'ok' : 'warn');
@@ -42,6 +45,18 @@ function onHostResult(message) {
     updateStatus(`已接收 ${message.currentCode || ''}`.trim(), 'ok');
   }
   ui.setDebug('message', JSON.stringify(message));
+}
+
+function scheduleHintRestore() {
+  if (state.ended) {
+    return;
+  }
+  clearTimeout(state.hintTimer);
+  state.hintTimer = setTimeout(() => {
+    if (!state.ended) {
+      updateStatus(SCAN_HINT);
+    }
+  }, 1600);
 }
 
 function handleCode(result) {
@@ -58,16 +73,17 @@ function handleCode(result) {
   }
 
   ui.setCurrentCode(result.code);
-  ui.addResult(result.code);
 
   if (state.bridge.hosted) {
     state.bridge.sendCode(result.code);
+    scheduleHintRestore();
     return;
   }
 
   state.count += 1;
   ui.setCount(state.count);
   updateStatus(`已识别 ${result.code}`, 'ok');
+  scheduleHintRestore();
 }
 
 function handleFrame({ elapsed, engine }) {
@@ -123,10 +139,7 @@ async function startCamera() {
   if (state.config.torchDefault && torchInfo.torch) {
     await applyTorch();
   }
-  updateStatus(
-    state.bridge.hosted ? '请对准包装条码连续扫描' : '独立模式：对准包装条码连续扫描',
-    'ok',
-  );
+  updateStatus(SCAN_HINT);
 }
 
 async function restart() {
@@ -136,7 +149,6 @@ async function restart() {
     state.count = 0;
   }
   ui.hideOverlay();
-  ui.clearResults();
   ui.setCount(state.count);
   ui.setCurrentCode('');
   try {

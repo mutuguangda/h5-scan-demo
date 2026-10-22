@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"
+    />
+    <meta name="theme-color" content="#0b0d10" />
+    <meta name="format-detection" content="telephone=no" />
+    <title>收货扫描</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <main class="app" id="app">
+      <video id="video" class="video" playsinline muted autoplay></video>
+      <div class="shade" aria-hidden="true"></div>
+
+      <div class="frame" id="frame" aria-hidden="true">
+        <span class="corner corner--tl"></span>
+        <span class="corner corner--tr"></span>
+        <span class="corner corner--bl"></span>
+        <span class="corner corner--br"></span>
+        <span class="laser"></span>
+      </div>
+
+      <header class="topbar">
+        <div class="stat">
+          <span class="stat__label">当前包装号</span>
+          <strong class="stat__value" id="current-code">—</strong>
+        </div>
+        <div class="stat stat--count">
+          <span class="stat__label">已收货包数</span>
+          <strong class="stat__value" id="count">0</strong>
+        </div>
+      </header>
+
+      <p class="status" id="status" data-tone="info" role="status" aria-live="polite">正在启动相机…</p>
+
+      <ul class="results" id="results" hidden aria-label="已识别条码"></ul>
+
+      <footer class="actions">
+        <button class="btn btn--ghost" id="torch" type="button" aria-pressed="false" disabled>闪光灯</button>
+        <button class="btn btn--ghost" id="debug-toggle" type="button" aria-pressed="false">调试</button>
+        <button class="btn btn--primary" id="end" type="button">结束扫描</button>
+      </footer>
+
+      <aside class="debug" id="debug" hidden>
+        <div class="debug__head">
+          <span>调试面板</span>
+          <button class="debug__close" id="debug-close" type="button" aria-label="关闭调试面板">×</button>
+        </div>
+        <dl class="debug__grid">
+          <dt>识码引擎</dt>
+          <dd id="dbg-engine">—</dd>
+          <dt>原始结果</dt>
+          <dd id="dbg-raw">—</dd>
+          <dt>解码耗时</dt>
+          <dd id="dbg-duration">—</dd>
+          <dt>同码判定</dt>
+          <dd id="dbg-dedupe">—</dd>
+          <dt>宿主消息</dt>
+          <dd id="dbg-message">—</dd>
+          <dt>运行模式</dt>
+          <dd id="dbg-mode">—</dd>
+          <dt>参数</dt>
+          <dd id="dbg-config">—</dd>
+        </dl>
+      </aside>
+
+      <div class="overlay" id="overlay" hidden>
+        <div class="overlay__card">
+          <h2 class="overlay__title" id="overlay-title">已结束扫描</h2>
+          <p class="overlay__text" id="overlay-text">相机已停止。</p>
+          <button class="btn btn--primary" id="restart" type="button">重新开始</button>
+        </div>
+      </div>
+    </main>
+
+    <script src="https://appx/web-view.min.js"></script>
+    <script src="./vendor/zxing.min.js"></script>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

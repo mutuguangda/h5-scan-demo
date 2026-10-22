@@ -51,6 +51,7 @@ body {
 
 .topbar {
   position: relative;
+  z-index: 1;
   padding: calc(var(--safe-top) + 10px) 24px 0;
   text-align: center;
 }
@@ -71,6 +72,7 @@ body {
 
 .scope-note {
   position: relative;
+  z-index: 1;
   margin: 4px 0 0;
   padding: 0 24px;
   color: var(--note);
@@ -94,6 +96,7 @@ body {
   max-width: 340px;
   max-height: 420px;
   pointer-events: none;
+  box-shadow: 0 0 0 100vmax rgba(48, 48, 48, 0.58);
 }
 
 .corner {

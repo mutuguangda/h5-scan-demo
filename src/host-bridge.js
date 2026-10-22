@@ -43,7 +43,7 @@ function pickPayload(event) {
   if (detail && detail.data !== undefined) {
     return detail.data;
   }
-  return null;
+  return event;
 }
 
 export function readMessage(event) {
@@ -169,6 +169,9 @@ export function createHostBridge(handlers = {}) {
     },
     end() {
       return emit({ type: 'end' });
+    },
+    vibrate() {
+      return emit({ type: 'vibrate' });
     },
     dispose() {
       receiver.dispose();

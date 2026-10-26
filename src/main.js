@@ -31,6 +31,7 @@ function updateStatus(text, tone = 'info') {
 }
 
 function onHostResult(message) {
+  clearTimeout(state.hintTimer);
   if (message.count !== null) {
     state.count = message.count;
     ui.setCount(state.count);
@@ -75,8 +76,8 @@ function handleCode(result) {
   ui.setCurrentCode(result.code);
 
   if (state.bridge.hosted) {
-    state.bridge.sendCode(result.code);
-    scheduleHintRestore();
+    const sent = state.bridge.sendCode(result.code);
+    updateStatus(sent ? '正在查询包装详情…' : '发送失败，请返回收货页重新打开', sent ? 'info' : 'error');
     return;
   }
 
@@ -129,7 +130,7 @@ async function endScan() {
   await stopCamera(notified ? '已通知小程序结束扫描' : '已结束扫描，相机已停止');
   ui.showOverlay(
     '已结束扫描',
-    notified ? '已通知小程序返回收货页面。' : '相机已停止，可点下方按钮重新开始。',
+    notified ? '正在返回收货页面；若未自动返回，请点击小程序左上角返回。' : '相机已停止，可点下方按钮重新开始。',
   );
 }
 

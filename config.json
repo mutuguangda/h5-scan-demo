@@ -1,8 +1,8 @@
 {
   "appName": "收货扫描",
-  "baseUrl": "https://mutuguangda.github.io/h5-scan-demo/",
+  "baseUrl": "",
   "hostName": "dingtalk",
-  "version": "c570d9a1",
+  "version": "dev",
   "debug": false,
   "dedupeWindowMs": 1500,
   "scanIntervalMs": 200,

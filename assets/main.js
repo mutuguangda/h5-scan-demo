@@ -299,7 +299,21 @@
 
   // src/scanner.js
   var ZX = () => runtime.ZXing;
-  var FORMAT_NAMES = ["QR_CODE", "CODE_128"];
+  var FORMAT_NAMES = [
+    "CODE_128",
+    "CODE_39",
+    "CODE_93",
+    "EAN_13",
+    "EAN_8",
+    "UPC_A",
+    "UPC_E",
+    "ITF",
+    "CODABAR",
+    "QR_CODE",
+    "DATA_MATRIX",
+    "PDF_417",
+    "AZTEC"
+  ];
   function supportedFormats(names = FORMAT_NAMES) {
     const zx = ZX();
     if (!zx) {

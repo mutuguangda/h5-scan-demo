@@ -59,11 +59,27 @@ export function readMessage(event) {
   if (Array.isArray(payload)) {
     payload = payload[0];
   }
-  if (!payload || typeof payload !== 'object' || payload.type !== 'result') {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+  if (payload.type === 'init') {
+    return {
+      type: 'init',
+      requestId: payload.requestId ?? null,
+      ok: true,
+      currentCode: typeof payload.currentCode === 'string' ? payload.currentCode : '',
+      count: payload.count === null || payload.count === undefined || payload.count === ''
+        ? null
+        : (Number.isFinite(Number(payload.count)) ? Number(payload.count) : null),
+      message: typeof payload.message === 'string' ? payload.message : '',
+    };
+  }
+  if (payload.type !== 'result') {
     return null;
   }
   return {
     type: 'result',
+    requestId: payload.requestId ?? null,
     ok: Boolean(payload.ok),
     currentCode: typeof payload.currentCode === 'string' ? payload.currentCode : '',
     count: payload.count === null || payload.count === undefined || payload.count === ''
@@ -164,8 +180,11 @@ export function createHostBridge(handlers = {}) {
     hosted,
     mode: hosted ? 'host' : 'standalone',
     channel: `${sender.channel}/${receiver.channel}`,
-    sendCode(code) {
-      return emit({ type: 'scan', code });
+    sendCode(code, requestId) {
+      return emit({ type: 'scan', code, requestId });
+    },
+    sendReady() {
+      return emit({ type: 'ready' });
     },
     end() {
       return emit({ type: 'end' });

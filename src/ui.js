@@ -8,7 +8,7 @@ export function createUi(documentRef = document) {
     count: $('count'),
     status: $('status'),
     torch: $('torch'),
-    debugToggle: $('debug-toggle'),
+    app: $('app'),
     end: $('end'),
     debug: $('debug'),
     debugClose: $('debug-close'),
@@ -66,9 +66,7 @@ export function createUi(documentRef = document) {
   function setDebugOpen(open) {
     if (elements.debug) {
       elements.debug.hidden = !open;
-    }
-    if (elements.debugToggle) {
-      elements.debugToggle.setAttribute('aria-pressed', open ? 'true' : 'false');
+      elements.app.classList.toggle('is-debug', open);
     }
   }
 

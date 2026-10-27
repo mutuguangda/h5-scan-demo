@@ -7,7 +7,6 @@
   --warn: #f5a524;
   --error: #f05252;
   --frame-w: 68vw;
-  --frame-h: 84vw;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -56,11 +55,14 @@ body {
   text-align: center;
 }
 
-.topbar__title {
-  margin: 0 0 26px;
-  font-size: 18px;
-  font-weight: 500;
-  position: relative;
+#current-code {
+  overflow-wrap: anywhere;
+}
+
+.topbar__stat:last-child {
+  max-height: 4.5em;
+  overflow-y: auto;
+  line-height: 1.5;
 }
 
 .topbar__stat {
@@ -81,8 +83,7 @@ body {
 
 .frame-wrap {
   position: relative;
-  flex: 1;
-  min-height: 0;
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -91,10 +92,8 @@ body {
 
 .viewfinder {
   position: relative;
-  width: min(68vw, calc((100% - 24px) * 0.82));
-  height: 100%;
-  max-width: 340px;
-  max-height: 420px;
+  width: min(var(--frame-w), 340px, 42dvh);
+  aspect-ratio: 1;
   pointer-events: none;
   box-shadow: 0 0 0 100vmax rgba(48, 48, 48, 0.58);
 }
@@ -147,18 +146,28 @@ body {
 @keyframes scan {
   0%,
   100% {
-    transform: translateY(-46%);
+    top: 6%;
     opacity: 0.35;
   }
 
   50% {
-    transform: translateY(46%);
+    top: 94%;
     opacity: 1;
   }
 }
 
+.app:not(.is-scanning) .laser {
+  visibility: hidden;
+  animation-play-state: paused;
+}
+
 .hint {
   position: relative;
+  z-index: 2;
+  flex: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.65);
   margin: 14px 24px 0;
   text-align: center;
   color: var(--muted);
@@ -240,25 +249,21 @@ body {
   stroke: #fff;
 }
 
-.debug-toggle {
-  position: absolute;
-  right: 14px;
-  bottom: calc(var(--safe-bottom) + 160px);
-  padding: 6px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.5);
-  color: var(--muted);
-  font-size: 12px;
-  cursor: pointer;
+.app.is-debug .actions {
+  padding-bottom: calc(var(--safe-bottom) + 26dvh + 20px);
+}
+
+.app.is-debug .viewfinder {
+  width: min(var(--frame-w), 340px, 24dvh);
 }
 
 .debug {
   position: absolute;
   left: 14px;
   right: 14px;
-  bottom: calc(var(--safe-bottom) + 200px);
-  max-height: 46vh;
+  z-index: 3;
+  bottom: calc(var(--safe-bottom) + 8px);
+  max-height: 26dvh;
   padding: 10px 12px 12px;
   overflow-y: auto;
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -309,6 +314,7 @@ body {
 
 .overlay {
   position: absolute;
+  z-index: 4;
   inset: 0;
   display: flex;
   align-items: center;

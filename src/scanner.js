@@ -2,38 +2,24 @@ import { DEDUPE_WINDOW_MS, SCAN_INTERVAL_MS } from './config.js';
 
 const ZX = () => globalThis.ZXing;
 
-const FORMAT_NAMES = [
-  'CODE_128',
-  'CODE_39',
-  'CODE_93',
-  'EAN_13',
-  'EAN_8',
-  'UPC_A',
-  'UPC_E',
-  'ITF',
-  'CODABAR',
-  'QR_CODE',
-  'DATA_MATRIX',
-  'PDF_417',
-  'AZTEC',
-];
+const FORMAT_NAMES = ['QR_CODE', 'CODE_128'];
 
-function supportedFormats() {
+function supportedFormats(names = FORMAT_NAMES) {
   const zx = ZX();
   if (!zx) {
     return null;
   }
-  return FORMAT_NAMES.map(name => zx.BarcodeFormat[name]).filter(value => value !== undefined);
+  return names.map(name => zx.BarcodeFormat[name]).filter(value => value !== undefined);
 }
 
-export function createZxingEngine() {
+export function createZxingEngine(options = {}) {
   const zx = ZX();
   if (!zx || typeof zx.MultiFormatReader !== 'function' || typeof zx.BinaryBitmap !== 'function') {
     return null;
   }
   const reader = new zx.MultiFormatReader(false);
   const hints = new Map();
-  const formats = supportedFormats();
+  const formats = supportedFormats(options.formats);
   if (formats && formats.length) {
     hints.set(zx.DecodeHintType.POSSIBLE_FORMATS, formats);
   }
@@ -63,34 +49,33 @@ export function createZxingEngine() {
           reader.reset();
         }
         catch {
-          // 忽略
         }
       }
     },
   };
 }
 
-export function createBarcodeDetectorEngine() {
+export async function createBarcodeDetectorEngine(options = {}) {
   const Detector = globalThis.BarcodeDetector;
   if (typeof Detector !== 'function') {
     return null;
   }
+  let detector;
   let formats = [];
   try {
     const supported = typeof Detector.getSupportedFormats === 'function'
-      ? Detector.getSupportedFormats()
+      ? await Detector.getSupportedFormats()
       : [];
-    const wanted = ['code_128', 'code_39', 'ean_13', 'ean_8', 'qr_code', 'data_matrix', 'itf', 'codabar'];
+    const wanted = (options.formats || FORMAT_NAMES).map(name => name.toLowerCase());
     formats = wanted.filter(item => supported.includes(item));
     if (!formats.length) {
       return null;
     }
+    detector = new Detector({ formats });
   }
   catch {
     return null;
   }
-
-  const detector = new Detector({ formats });
 
   return {
     name: 'barcode-detector',
@@ -110,22 +95,22 @@ export function createBarcodeDetectorEngine() {
   };
 }
 
-export function createEngine() {
-  const detector = createBarcodeDetectorEngine();
+export async function createEngine(options = {}) {
+  const detector = await createBarcodeDetectorEngine(options);
   if (detector) {
     return detector;
   }
-  const zxing = createZxingEngine();
+  const zxing = createZxingEngine(options);
   if (zxing) {
     return zxing;
   }
   return null;
 }
 
-export function createScanner(options = {}) {
+export async function createScanner(options = {}) {
   const video = options.video;
   const canvas = options.canvas || document.createElement('canvas');
-  const engine = options.engine || createEngine();
+  const engine = await (options.engine || createEngine(options));
   const intervalMs = options.intervalMs || SCAN_INTERVAL_MS;
   const maxWidth = options.maxWidth || 1280;
   const onCode = options.onCode || (() => {});
@@ -136,7 +121,8 @@ export function createScanner(options = {}) {
   let stream = null;
   let timer = null;
   let running = false;
-  let busy = false;
+  let generation = 0;
+  let starting = null;
   let torchOn = false;
 
   function stopTimer() {
@@ -146,25 +132,26 @@ export function createScanner(options = {}) {
     }
   }
 
-  function releaseStream() {
-    if (!stream) {
+  function releaseStream(target) {
+    if (!target) {
       return;
     }
-    for (const track of stream.getTracks()) {
+    for (const track of target.getTracks()) {
       try {
         track.stop();
       }
-      catch {
-        // 忽略
-      }
+      catch {}
     }
-    stream = null;
-    if (video) {
+    if (video && video.srcObject === target) {
       video.srcObject = null;
+    }
+    if (stream === target) {
+      stream = null;
+      torchOn = false;
     }
   }
 
-  async function openCamera() {
+  async function openCamera(id) {
     if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
       throw new Error('当前浏览器不支持相机接口，请使用手机浏览器并在 HTTPS 下打开');
     }
@@ -176,14 +163,29 @@ export function createScanner(options = {}) {
         height: { ideal: 1080 },
       },
     });
-    if (video) {
-      video.srcObject = next;
-      video.setAttribute('playsinline', 'true');
-      video.muted = true;
-      await video.play().catch(() => {});
+    if (id !== generation) {
+      releaseStream(next);
+      return false;
     }
+    releaseStream(stream);
     stream = next;
-    return next;
+    try {
+      if (video) {
+        video.srcObject = next;
+        video.setAttribute('playsinline', 'true');
+        video.muted = true;
+        await video.play();
+      }
+    }
+    catch (error) {
+      releaseStream(next);
+      throw error;
+    }
+    if (id !== generation) {
+      releaseStream(next);
+      return false;
+    }
+    return true;
   }
 
   function supportsTorch() {
@@ -207,12 +209,16 @@ export function createScanner(options = {}) {
     if (!stream) {
       return false;
     }
-    const track = stream.getVideoTracks()[0];
+    const current = stream;
+    const track = current.getVideoTracks()[0];
     if (!track) {
       return false;
     }
     try {
       await track.applyConstraints({ advanced: [{ torch: Boolean(next) }] });
+      if (stream !== current) {
+        return false;
+      }
       torchOn = Boolean(next);
       return true;
     }
@@ -230,43 +236,71 @@ export function createScanner(options = {}) {
     if (!width || !height) {
       return null;
     }
-    const scale = Math.min(1, maxWidth / width);
-    const targetWidth = Math.round(width * scale);
-    const targetHeight = Math.round(height * scale);
+    let x = 0;
+    let y = 0;
+    let cropWidth = width;
+    let cropHeight = height;
+    if (options.frame) {
+      const rect = video.getBoundingClientRect();
+      const frame = options.frame.getBoundingClientRect();
+      if (!rect.width || !rect.height) {
+        return null;
+      }
+      const scale = Math.max(rect.width / width, rect.height / height);
+      const offsetX = (width * scale - rect.width) / 2;
+      const offsetY = (height * scale - rect.height) / 2;
+      const left = Math.max(rect.left, frame.left);
+      const top = Math.max(rect.top, frame.top);
+      const right = Math.min(rect.left + rect.width, frame.left + frame.width);
+      const bottom = Math.min(rect.top + rect.height, frame.top + frame.height);
+      if (right <= left || bottom <= top) {
+        return null;
+      }
+      x = (left - rect.left + offsetX) / scale;
+      y = (top - rect.top + offsetY) / scale;
+      cropWidth = (right - left) / scale;
+      cropHeight = (bottom - top) / scale;
+    }
+    const scale = Math.min(1, maxWidth / cropWidth);
+    const targetWidth = Math.max(1, Math.round(cropWidth * scale));
+    const targetHeight = Math.max(1, Math.round(cropHeight * scale));
     if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
       canvas.width = targetWidth;
       canvas.height = targetHeight;
     }
-    context.drawImage(video, 0, 0, targetWidth, targetHeight);
+    context.drawImage(video, x, y, cropWidth, cropHeight, 0, 0, targetWidth, targetHeight);
     return canvas;
   }
 
-  async function tick() {
-    if (!running) {
+  async function tick(id) {
+    if (!running || id !== generation) {
       return;
     }
-    if (!busy) {
-      busy = true;
-      const start = performance.now();
-      try {
-        const frame = drawFrame();
-        if (frame) {
-          const raw = await Promise.resolve(engine ? engine.decode(frame) : null);
-          const elapsed = performance.now() - start;
-          onFrame({ raw, elapsed, engine: engine ? engine.name : 'none' });
-          if (raw && raw.code) {
-            onCode({ code: String(raw.code), format: raw.format || '', elapsed });
-          }
+    const start = performance.now();
+    try {
+      const frame = drawFrame();
+      if (frame) {
+        const raw = await engine.decode(frame);
+        if (!running || id !== generation) {
+          return;
+        }
+        const elapsed = performance.now() - start;
+        onFrame({ raw, elapsed, engine: engine.name });
+        if (running && id === generation && raw && raw.code) {
+          onCode({ code: String(raw.code), format: raw.format || '', elapsed });
         }
       }
-      catch (error) {
+    }
+    catch (error) {
+      if (running && id === generation) {
         onError(error);
       }
-      finally {
-        busy = false;
+    }
+    finally {
+      if (running && id === generation) {
+        timer = setTimeout(() => tick(id), intervalMs);
       }
     }
-    timer = setTimeout(tick, intervalMs);
   }
 
   return {
@@ -276,22 +310,40 @@ export function createScanner(options = {}) {
     get running() {
       return running;
     },
-    async start() {
-      if (!engine) {
-        throw new Error('识码引擎未加载，无法识别条码');
+    start() {
+      if (starting) {
+        return starting;
       }
-      await openCamera();
-      running = true;
-      tick();
-      return { torch: supportsTorch() };
+      if (running) {
+        return Promise.resolve({ torch: supportsTorch() });
+      }
+      if (!engine) {
+        return Promise.reject(new Error('识码引擎未加载，无法识别条码'));
+      }
+      const id = ++generation;
+      const pending = (async () => {
+        if (!await openCamera(id)) {
+          return { torch: false };
+        }
+        running = true;
+        tick(id);
+        return { torch: supportsTorch() };
+      })();
+      starting = pending;
+      const clear = () => {
+        if (starting === pending) {
+          starting = null;
+        }
+      };
+      pending.then(clear, clear);
+      return pending;
     },
     async stop() {
+      ++generation;
       running = false;
+      starting = null;
       stopTimer();
-      if (torchOn) {
-        await setTorch(false);
-      }
-      releaseStream();
+      releaseStream(stream);
     },
     supportsTorch,
     setTorch,
